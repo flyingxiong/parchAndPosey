@@ -121,4 +121,252 @@ ON r.id = s.region_id
 GROUP BY r.name
 ORDER BY num_reps;
 
+# 16 group by part 2
+SELECT account_id,
+       channel,
+       COUNT(id) AS events
+FROM web_events
+GROUP BY account_id, channel
+ORDER BY channel, account_id DESC;
 
+# 17 group by part 2
+# For each account, determine the average amount of each type of paper they purchased across their orders. Your result should have four columns - one for the account name and one for the average quantity purchased for each of the paper types for each account.
+SELECT a.name account_name, AVG(o.gloss_qty), AVG(o.standard_qty), AVG(o.poster_qty)
+    FROM orders o
+JOIN accounts a on o.account_id = a.id
+GROUP BY a.name;
+
+# For each account, determine the average amount spent per order on each paper type. Your result should have four columns - one for the account name and one for the average amount spent on each paper type.
+SELECT a.name account_name, AVG(O.gloss_amt_usd), AVG(O.standard_amt_usd), AVG(O.poster_amt_usd)
+    FROM orders o
+JOIN accounts a on o.account_id = a.id
+GROUP BY a.name;
+
+# Determine the number of times a particular channel was used in the web_events table for each sales rep. Your final table should have three columns - the name of the sales rep, the channel, and the number of occurrences. Order your table with the highest number of occurrences first.
+SELECT sr.name, e.channel, COUNT(e.occurred_at) AS occurances
+    FROM web_events e
+JOIN accounts a on a.id = e.account_id
+JOIN sales_reps sr on sr.id = a.sales_rep_id
+GROUP BY E.channel, SR.name
+ORDER BY occurances DESC;
+
+# Determine the number of times a particular channel was used in the web_events table for each region. Your final table should have three columns - the region name, the channel, and the number of occurrences. Order your table with the highest number of occurrences first.
+SELECT r.name, e.channel, COUNT(e.occurred_at) AS occurances
+    FROM web_events e
+JOIN accounts a on a.id = e.account_id
+JOIN sales_reps sr on a.sales_rep_id = sr.id
+JOIN region r on r.id = sr.region_id
+GROUP BY r.name, e.channel
+ORDER BY occurances DESC ;
+
+SELECT r.name, w.channel, COUNT(*) num_events
+FROM accounts a
+JOIN web_events w
+ON a.id = w.account_id
+JOIN sales_reps s
+ON s.id = a.sales_rep_id
+JOIN region r
+ON r.id = s.region_id
+GROUP BY r.name, w.channel
+ORDER BY num_events DESC;
+
+# DISTINCT
+SELECT web_events.account_id,
+       web_events.channel,
+       COUNT(web_events.id) as events
+    FROM web_events
+GROUP BY web_events.account_id, web_events.channel
+ORDER BY web_events.account_id, events;
+
+# is the same as above, except the events column
+SELECT DISTINCT web_events.account_id,
+                channel
+    FROM web_events
+ORDER BY web_events.account_id;
+
+# 20 distict quiz
+# Use DISTINCT to test if there are any accounts associated with more than one region.
+SELECT DISTINCT accounts.name, R.name
+    FROM accounts
+JOIN sales_reps sr on sr.id = accounts.sales_rep_id
+JOIN region r on r.id = sr.region_id;
+
+SELECT DISTINCT id, name
+FROM accounts;
+# Have any sales reps worked on more than one account?
+SELECT s.id, s.name, COUNT(*) num_accounts
+FROM accounts a
+JOIN sales_reps s
+ON s.id = a.sales_rep_id
+GROUP BY s.id, s.name
+ORDER BY num_accounts;
+
+# 23 Having
+# 1. How many of the sales reps have more than 5 accounts that they manage?
+SELECT COUNT(*) as number_accounts
+    FROM accounts
+JOIN sales_reps sr on accounts.sales_rep_id = sr.id
+GROUP BY sr.id, sr.name
+HAVING number_accounts > 5;
+
+SELECT s.id, s.name, COUNT(*) num_accounts
+FROM accounts a
+JOIN sales_reps s
+ON s.id = a.sales_rep_id
+GROUP BY s.id, s.name
+HAVING COUNT(*) > 5
+ORDER BY num_accounts;
+
+SELECT COUNT(*) num_reps_above5
+FROM(SELECT s.id, s.name, COUNT(*) num_accounts
+        FROM accounts a
+        JOIN sales_reps s
+        ON s.id = a.sales_rep_id
+        GROUP BY s.id, s.name
+        HAVING COUNT(*) > 5
+        ORDER BY num_accounts) AS Table1;
+
+# 2. How many accounts have more than 20 orders?
+SELECT COUNT(*) AS number_orders
+    FROM orders
+JOIN accounts a on a.id = orders.account_id
+JOIN sales_reps sr on sr.id = a.sales_rep_id
+GROUP BY a.id, a.name
+HAVING number_orders > 20;
+
+SELECT a.id, a.name, COUNT(*) num_orders
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+HAVING COUNT(*) > 20
+ORDER BY num_orders;
+
+# 3. Which account has the most orders?
+SELECT a.name, COUNT(*) AS number_orders
+    FROM orders
+JOIN accounts a on a.id = orders.account_id
+JOIN sales_reps sr on sr.id = a.sales_rep_id
+GROUP BY a.id, a.name
+ORDER BY number_orders DESC
+LIMIT 1;
+
+SELECT a.id, a.name, COUNT(*) num_orders
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+ORDER BY num_orders DESC
+LIMIT 1;
+
+# 4. Which accounts spent more than 30,000 usd total across all orders?
+SELECT a.name
+    FROM orders
+JOIN accounts a ON a.id = orders.account_id
+GROUP BY a.name
+HAVING SUM(orders.total_amt_usd) > 30000;
+
+SELECT a.id, a.name, SUM(o.total_amt_usd) total_spent
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+HAVING SUM(o.total_amt_usd) > 30000
+ORDER BY total_spent;
+
+# 5. Which accounts spent less than 1,000 usd total across all orders?
+SELECT a.name
+    FROM orders
+JOIN accounts a ON a.id = orders.account_id
+GROUP BY a.name
+HAVING SUM(orders.total_amt_usd) < 1000;
+
+SELECT a.id, a.name, SUM(o.total_amt_usd) total_spent
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+HAVING SUM(o.total_amt_usd) < 1000
+ORDER BY total_spent;
+
+# 6. Which account has spent the most with us?
+SELECT a.name, SUM(orders.total_amt_usd) AS total
+    FROM orders
+JOIN accounts a ON a.id = orders.account_id
+GROUP BY a.name
+ORDER BY total DESC
+LIMIT 1;
+
+SELECT a.id, a.name, SUM(o.total_amt_usd) total_spent
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+ORDER BY total_spent DESC
+LIMIT 1;
+
+# 7. Which account has spent the least with us?
+SELECT a.name, SUM(orders.total_amt_usd) AS total
+    FROM orders
+JOIN accounts a ON a.id = orders.account_id
+GROUP BY a.name
+ORDER BY total
+LIMIT 1;
+
+SELECT a.id, a.name, SUM(o.total_amt_usd) total_spent
+FROM accounts a
+JOIN orders o
+ON a.id = o.account_id
+GROUP BY a.id, a.name
+ORDER BY total_spent
+LIMIT 1;
+
+# 8. Which accounts used facebook as a channel to contact customers more than 6 times?
+SELECT accounts.name
+    FROM accounts
+JOIN web_events we on accounts.id = we.account_id
+WHERE we.channel = 'facebook'
+GROUP BY we.account_id
+HAVING COUNT(*) > 6;
+
+SELECT a.id, a.name, w.channel, COUNT(*) use_of_channel
+FROM accounts a
+JOIN web_events w
+ON a.id = w.account_id
+GROUP BY a.id, a.name, w.channel
+HAVING COUNT(*) > 6 AND w.channel = 'facebook'
+ORDER BY use_of_channel;
+
+# 9. Which account used facebook most as a channel?
+SELECT accounts.name, COUNT(*) AS total
+    FROM accounts
+JOIN web_events we on accounts.id = we.account_id
+WHERE channel = 'facebook'
+GROUP BY we.account_id, we.channel
+ORDER BY total DESC
+LIMIT 1;
+
+SELECT a.id, a.name, w.channel, COUNT(*) use_of_channel
+FROM accounts a
+JOIN web_events w
+ON a.id = w.account_id
+WHERE w.channel = 'facebook'
+GROUP BY a.id, a.name, w.channel
+ORDER BY use_of_channel DESC
+LIMIT 1;
+
+# 10. Which channel was most frequently used by most accounts?
+SELECT we.channel, COUNT(*) AS total
+    FROM accounts
+JOIN web_events we on accounts.id = we.account_id
+GROUP BY we.account_id, we.channel
+ORDER BY total DESC
+LIMIT 10;
+
+SELECT a.id, a.name, w.channel, COUNT(*) use_of_channel
+FROM accounts a
+JOIN web_events w
+ON a.id = w.account_id
+GROUP BY a.id, a.name, w.channel
+ORDER BY use_of_channel DESC
+LIMIT 10;
